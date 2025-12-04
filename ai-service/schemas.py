@@ -21,6 +21,6 @@ class AIRecommendationRequest(BaseModel):
 
 # [응답] 메뉴 추천 결과
 class AIRecommendResponse(BaseSuccessResponse):
-    drink: str
-    snack: str
-    reason: str
+    drink: str = Field(..., description="추천 음료")
+    snack: str = Field(..., description="추천 간식")
+    reason: str = Field(..., description="추천 이유")
