@@ -99,3 +99,9 @@ async def get_keywords(service: AIService = Depends(get_service)):
 @app.post("/ai/menus", response_model=AIRecommendResponse, dependencies=[Depends(verify_key)])
 async def recommend(req: AIRecommendationRequest, service: AIService = Depends(get_service)):
     return await service.recommend_menu(req)
+
+if __name__ == "__main__":
+    import uvicorn
+    # host="0.0.0.0" : 외부 접속 허용 (배포 시 필수)
+    print("🚀 AI Server Starting...")
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
