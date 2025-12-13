@@ -1,14 +1,12 @@
-const mysql = require('mysql2/promise');
+require("dotenv").config();
+const mysql = require("mysql2/promise");
 
 const pool = mysql.createPool({
-    host: "svc.sel3.cloudtype.app",
-    port: 31443,
-    user: "root",          // Cloudtype에서 제공된 DB 사용자
-    password: "daylong",       // Cloudtype MariaDB 비밀번호
-    database: "daylong",   // Cloudtype MariaDB DB 이름
-    ssl: {
-        rejectUnauthorized: false
-    }
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASS,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT
 });
 
 module.exports = pool;
