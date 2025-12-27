@@ -12,7 +12,11 @@ from services import AIService, LLMException
 load_dotenv()
 
 # KEY 값 불러오기
-OPENAI_KEY = os.getenv("OPENAI_API_KEY")
+AI_PROVIDER = os.getenv("AI_PROVIDER", "GEMINI").upper()
+if AI_PROVIDER == "GEMINI":
+    AI_KEY = os.getenv("GEMINI_API_KEY")
+else:
+    AI_KEY = os.getenv("OPENAI_API_KEY")
 PYTHON_KEY = os.getenv("PYTHON_API_KEY")
 
 app = FastAPI()
@@ -20,7 +24,7 @@ app = FastAPI()
 # ---------------------------------------------------------
 # 전역 에러 핸들러 (Global Exception Handlers)
 # ---------------------------------------------------------
-# [E422] 유효성 검사 실패 (Request Body 형식이 틀림)
+# [E422] 유효성 검사 실패
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(
@@ -32,22 +36,21 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         },
     )
 
-# [E503] LLM 서버(OpenAI) 응답 없음 (services.py에서 발생시킨 에러 잡기)
+# [LLMException 처리] ★ 여기가 핵심! services.py에서 던진 에러 코드를 그대로 씀
 @app.exception_handler(LLMException)
 async def llm_exception_handler(request: Request, exc: LLMException):
     return JSONResponse(
-        status_code=503,
+        status_code=exc.status_code,   # 예: 429, 503, 401
         content={
             "status": "error",
-            "code": "E503_LLM_DOWN",
-            "message": "LLM 서버가 응답하지 않습니다."
+            "code": exc.code,          # 예: E429_QUOTA_EXCEEDED
+            "message": exc.message
         },
     )
 
-# [E500] 기타 알 수 없는 서버 내부 에러 (코드 버그 등)
+# [E500] 기타 알 수 없는 서버 내부 에러
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    # (실제 에러 로그는 서버 콘솔에 출력)
     print(f"🔴 Critical Server Error: {exc}")
     return JSONResponse(
         status_code=500,
@@ -61,11 +64,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 # ---------------------------------------------------------
 # 보안 및 의존성
 # ---------------------------------------------------------
-# [E401] API Key 인증 실패 핸들러 (직접 JSONResponse 리턴)
-async def verify_key(x_api_key: str = Header(None)):
-    if x_api_key != PYTHON_KEY:
-        raise AuthException()
 
+# 사용자 정의 인증 에러
 class AuthException(Exception): pass
 
 @app.exception_handler(AuthException)
@@ -79,16 +79,20 @@ async def auth_exception_handler(request: Request, exc: AuthException):
         }
     )
 
-# ---------------------------------------------------------
-# API 엔드포인트
-# ---------------------------------------------------------
+async def verify_key(x_api_key: str = Header(None)):
+    if x_api_key != PYTHON_KEY:
+        raise AuthException()
 
 def get_service():
-    return AIService(OPENAI_KEY)
+    return AIService(AI_PROVIDER, AI_KEY)
 
 @app.get("/")
 def health():
     return {"status": "ok"}
+
+# ---------------------------------------------------------
+# API 엔드포인트
+# ---------------------------------------------------------
 
 # 키워드 생성
 @app.post("/ai/keywords", response_model=KeywordResponse, dependencies=[Depends(verify_key)])
