@@ -33,23 +33,44 @@
 
   </div>
 </template>
-
 <script>
+import { useMenuStore } from "@/stores/menuStore";
 import MenuRecommendPage from "./menuRecommendPage.vue";
+
 export default {
   name: "MenuLoadingPage",
-   components: {
-    MenuRecommendPage  
+
+  components: {
+    MenuRecommendPage
+  },
+
+  computed: {
+    isLoading() {
+      return useMenuStore().loading;
+    },
+    drink() {
+      return useMenuStore().drink;
+    }
+  },
+
+  watch: {
+    // drink가 생기면 결과 페이지로 이동
+    drink(newVal) {
+      if (newVal) {
+        this.$router.replace("/result");
+      }
+    }
   },
 
   mounted() {
-    // 3초 뒤 결과 페이지로 자동 이동하도록 할 수도 있음
-    setTimeout(() => {
-      this.$router.push("/result");
-    }, 3000);
+    // 새로고침 / 직접 접근 방지
+    if (!this.isLoading) {
+      this.$router.replace("/");
+    }
   }
 };
 </script>
+
 
 <style scoped>
 .loading-wrapper {

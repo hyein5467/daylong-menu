@@ -25,14 +25,18 @@
       
       <!-- 인기 메뉴 -->
       <template v-if="activeTab === 'popular'">
-        <div class="menu-item">
-          <img :src="drink.image" class="menu-image" />
-          <div class="menu-name">{{ drink.name }}</div>
+       <div class="menu-item">
+          <div class="image-box">
+            <img :src="drink.image" class="menu-image" />
+          </div>
+          <div class="menu-name" v-html="formatMenuName(drink.name)"></div>
         </div>
 
         <div class="menu-item">
-          <img :src="snack.image" class="menu-image" />
-          <div class="menu-name">{{ snack.name }}</div>
+          <div class="image-box">
+            <img :src="snack.image" class="menu-image snack" />
+          </div>
+          <div class="menu-name" v-html="formatMenuName(snack.name)"></div>
         </div>
       </template>
 
@@ -90,7 +94,17 @@ methods: {
     axios.post("/api/click/recommend").catch((err) => {
       console.error("recommend_click update error:", err);
     });
-  }
+  },
+
+    formatMenuName(name) {
+    if (!name) return "";
+
+    // 10글자 미만이면 그대로
+    if (name.length < 10) return name;
+
+    // 띄어쓰기 기준으로 <br> 삽입
+    return name.split(" ").join("<br>");
+  },
 }
 
 
@@ -136,11 +150,19 @@ font-size: 13px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 45%;
+}
+
+.image-box {
+ width: 18vw;
+  height: 18vw;
+  max-width: 80px;
+  max-height: 80px;
 }
 
 .menu-image {
-  height: 5vw;
-  width: auto;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
 }
 
@@ -150,6 +172,15 @@ font-size: 13px;
   background-color: #f6e7b1;
   border-radius: 4px;
   font-size: 13px;
+
+  text-align: center;          
+  display: flex;               
+  justify-content: center;     
+  align-items: center;        
+}
+
+.menu-image.snack {
+  transform: scale(1.35) translateY(10px);
 }
 
 .coming-soon {

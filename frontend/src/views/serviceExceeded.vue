@@ -4,34 +4,10 @@
     <!-- HEADER -->
     <header class="header-section">
       <div class="title">오늘의 추천 메뉴는?</div>
-      <div class="subTitle">키워드를 한 개 이상 골라주세요!</div>
-      <img
-      src="/refresh.png"
-      alt="refresh"
-      class="refresh-icon"
-      @click="refreshKeywords"
-      />
-    </header>
-
-    <!-- 키워드 선택 영역 -->
-    <main class="keyword-section">
-      <div class="keyword-grid">
-        <button
-          class="keyword-btn"
-          v-for="(key, idx) in keywords"
-          :key="idx"
-          :class="{ active: selectedKeywords.includes(key) }"
-          @click="toggleKeyword(key)"
-        >
-          {{ key }}
-        </button>
-      </div>
-
-      <button class="select-btn" @click="goToResult">
-        선택하기
-      </button>
-    </main>
-
+      <div class="subTitle">금일 서비스 운영을 마감합니다. 
+       내일 다시 찾아주세요!</div>
+       </header>
+     
     <!-- FOOTER (미리보기용, 없어도 됨) -->
     <footer class="footer-section">
       <MenuRecommendPage
@@ -49,7 +25,7 @@ import { useKeywordStore } from "@/stores/keywordStore";
 import { useMenuStore } from "@/stores/menuStore";
 
 export default {
-  name: "KeywordSelectPage",
+  name: "serviceExceeded",
 
   components: {
     MenuRecommendPage
@@ -139,55 +115,44 @@ export default {
 
   } catch (err) {
 
-  // ❌ 실패가 확정된 순간 → 결과 초기화
-  menuStore.reset();
+    
+    // ❌ 실패가 확정된 순간 → 결과 초기화
+    menuStore.reset();
 
-  const status = err.response?.status;
-  //const code = err.response?.data?.code;
+    /**
+     * ⛔ 하루 3회 초과
+     */
+    if (err.response?.status === 429) {
+      alert("고객님의 금일 추천 횟수(3회)가 소진되었습니다. \n내일 다시 이용해주세요.");
+      this.$router.replace("/select");
+      return;
+    }
 
-  /**
-   * ⛔ AI 토큰 사용량 초과 
-   */
-  if (status === 429) {
-    alert("AI 서비스의 이용 한도가 모두 소진되었습니다.\n내일 다시 이용해주세요!");
-    this.$router.replace("/service-exceeded"); // or /select 정책에 따라
-    return;
-  }
+    /**
+     * ⛔ Python 요청 데이터 오류 (422)
+     */
+    if (err.response?.status === 422) {
+      alert("요청 정보가 올바르지 않습니다.\n잠시 후 다시 시도해주세요.");
+      this.$router.replace("/select");
+      return;
+    }
 
-  /**
-   * ⛔ 하루 3회 초과 (메뉴 정책)
-   */
-  if (status === 429) {
-    alert("고객님의 금일 추천 횟수(3회)가 소진되었습니다.\n내일 다시 이용해주세요.");
+    /**
+     * ⛔ Python 서버 응답 지연 / 타임아웃
+     */
+    if (err.code === "ECONNABORTED") {
+      alert("추천 서버 응답이 지연되고 있어요.\n잠시 후 다시 시도해주세요.");
+      this.$router.replace("/select");
+      return;
+    }
+
+    /**
+     * ⛔ 그 외 서버 오류
+     */
+    console.error("메뉴 추천 실패:", err);
+    alert("추천에 실패했습니다.\n잠시 후 다시 시도해주세요.");
     this.$router.replace("/select");
-    return;
   }
-
-  /**
-   * ⛔ Python 요청 데이터 오류 (422)
-   */
-  if (status === 422) {
-    alert("요청 정보가 올바르지 않습니다.\n잠시 후 다시 시도해주세요.");
-    this.$router.replace("/select");
-    return;
-  }
-
-  /**
-   * ⛔ Python 서버 응답 지연 / 타임아웃
-   */
-  if (err.code === "ECONNABORTED") {
-    alert("추천 서버 응답이 지연되고 있어요.\n잠시 후 다시 시도해주세요.");
-    this.$router.replace("/select");
-    return;
-  }
-
-  /**
-   * ⛔ 그 외 서버 오류
-   */
-  console.error("메뉴 추천 실패:", err);
-  alert("추천에 실패했습니다.\n잠시 후 다시 시도해주세요.");
-  this.$router.replace("/select");
-}
   }
 }
 };
@@ -221,15 +186,9 @@ export default {
   color: #777;
 }
 
-
-.refresh-icon{
-  margin-top: 10px;
-  width: 3.2%;
-}
-
 /* 키워드 버튼 영역 */
 .keyword-section {
-  margin-top: 20px;
+  margin-top: 30px;
   width: 90%;
   max-width: 350px;
   display: flex;
@@ -270,5 +229,10 @@ export default {
 .footer-section {
   margin-top: 50px;
   width: 350px;
+}
+
+.refresh-icon{
+  margin-top: 10px;
+  width: 2vw;
 }
 </style>

@@ -13,14 +13,16 @@
 
         <!-- 키워드 버블 -->
         <div class="keyword-bubbles">
-          <div class="keyword bubble" v-for="(item, idx) in keywords" :key="idx">
+          <div
+            class="keyword bubble"
+            v-for="(item, idx) in keywords"
+            :key="idx"
+          >
             {{ item }}
           </div>
         </div>
 
         <div class="loadingText">키워드 추출 중입니다...</div>
-
-        <!--button class="select-btn">선택하기</button-->
 
       </div>
     </main>
@@ -39,47 +41,81 @@
 <script>
 import axios from "axios";
 import MenuRecommendPage from "./menuRecommendPage.vue";
+import { useKeywordStore } from "@/stores/keywordStore";
 
 export default {
   name: "LoadingPage",
-
-  components: {
-    MenuRecommendPage  
-  },
+  components: { MenuRecommendPage },
 
   data() {
     return {
-      keywordLoading: 0,
       keywords: ["키", "워", "드", "추", "출", "중"],
-
       drink: { name: "", image: "" },
       snack: { name: "", image: "" },
+      selectTimer: null, // ✅ setTimeout 제어용
     };
   },
 
-  mounted() {
-    axios.get("/api/popular").then((res) => {
-      const { drink, snack } = res.data;
+  async mounted() {
+  const keywordStore = useKeywordStore();
+  let moveTimer = null;
 
-      this.drink = {
-        name: drink.name,
-        image: `/menu_img/drinks/${drink.name}.png`,
-      };
+  try {
+    // 1️⃣ userToken 발급
+    await axios.get("/api/bootstrap", { withCredentials: true });
 
-      this.snack = {
-        name: snack.name,
-        image: `/menu_img/snacks/${snack.name}.png`,
-      };
+    // 2️⃣ 인기 메뉴
+    const popularRes = await axios.get("/api/popular", { withCredentials: true });
+    const { drink, snack } = popularRes.data;
+
+    this.drink = {
+      name: drink.name,
+      image: `/menu_img/drinks/${drink.name}.png`,
+    };
+    this.snack = {
+      name: snack.name,
+      image: `/menu_img/snacks/${snack.name}.png`,
+    };
+
+    // 3️⃣ 키워드 요청 (🔥 여기서 429면 바로 catch로 감)
+    const keywordRes = await axios.get("/api/keywords", {
+      withCredentials: true,
     });
-  },
 
-  watch: {
-    keywordLoading(newValue) {
-      if (newValue === 1) {
-        this.$router.push("/select");
-      }
+
+    if (keywordRes.status === 429 && keywordRes.code === "E429_QUOTA_EXCEEDED") {
+      this.$router.replace("/service-exceeded");
+      return;
     }
+
+
+    // 4️⃣ 정상일 때만 store 저장
+    keywordStore.setKeywords(keywordRes.data.data);
+
+    // 5️⃣ 정상일 때만 이동 예약
+    moveTimer = setTimeout(() => {
+      this.$router.replace("/select");
+    }, 1500);
+
+ } catch (err) {
+  if (moveTimer) {
+    clearTimeout(moveTimer);
   }
+
+  const status = err.response?.status;
+  const code = err.response?.data?.code;
+
+  if (status === 429 && code === "E429_QUOTA_EXCEEDED") {
+    this.$router.replace("/service-exceeded");
+    return;
+  }
+
+  console.error("초기 로딩 실패:", err);
+  alert("초기 로딩에 실패했습니다.\n잠시 후 다시 시도해주세요.");
+}
+
+}
+
 };
 </script>
 
@@ -161,14 +197,6 @@ export default {
   0% { opacity: .3; }
   50% { opacity: 1; }
   100% { opacity: .3; }
-}
-
-.select-btn {
-  margin-top: 20px;
-  padding: 10px 30px;
-  background-color: #d3dee7;
-  border: none;
-  border-radius: 18px;
 }
 
 /* FOOTER */

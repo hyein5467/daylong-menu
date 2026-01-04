@@ -30,6 +30,11 @@ export default new Router({
       name: "menuResultPage",
       component: menuResultPage
     },
+    {
+      path: "/service-exceeded",
+      name: "serviceExceeded",
+      component: () => import("@/views/serviceExceeded.vue")
+    }
 
   ]
 });

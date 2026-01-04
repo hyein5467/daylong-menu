@@ -11,7 +11,7 @@
 
       <!-- 위의 파란 배너 -->
       <div class="title-bubble">
-        상큼한 걸 좋아하는 당신에게 ~♪
+        {{ reason || "오늘의 추천 메뉴입니다 😊" }}
       </div>
 
       <!-- 메뉴 2개 가로 정렬 -->
@@ -20,13 +20,15 @@
         <!-- DRINK -->
         <div class="menu-item" :class="{ show: animate }">
           <img :src="drink.image" class="menu-image" />
-          <div class="menu-name">{{ drink.name }}</div>
+          <div class="menu-name" v-html="formatMenuName(drink.name)"></div>
+          
         </div>
 
         <!-- SNACK -->
         <div class="menu-item" :class="{ show: animate }">
           <img :src="snack.image" class="menu-image" />
-          <div class="menu-name">{{ snack.name }}</div>
+          <div class="menu-name" v-html="formatMenuName(snack.name)"></div>
+
         </div>
 
       </div>
@@ -65,72 +67,83 @@
   </div>
 </template>
 
-
 <script>
 import axios from "axios";
 import MenuRecommendPage from "./menuRecommendPage.vue";
+import { useMenuStore } from "@/stores/menuStore";
 
 export default {
   name: "MenuResultPage",
 
   components: {
-    MenuRecommendPage,
+    MenuRecommendPage
   },
 
   data() {
     return {
-      drink: { name: "", image: "" },
-      snack: { name: "", image: "" },
       animate: false,
-      selectedStar: 0,
+      selectedStar: 0
     };
   },
 
+  computed: {
+    drink() {
+      return useMenuStore().drink;
+    },
+    snack() {
+      return useMenuStore().snack;
+    },
+    reason() {
+      return useMenuStore().reason;
+    }
+  },
+
   mounted() {
-    const drinkName = this.$route.query.drink;
-    const snackName = this.$route.query.snack;
-
-    if (drinkName && snackName) {
-      this.drink = {
-        name: drinkName,
-        image: `/menu_img/drinks/${drinkName}.png`,
-      };
-
-      this.snack = {
-        name: snackName,
-        image: `/menu_img/snacks/${snackName}.png`,
-      };
+    // 새로고침 / 직접 접근 방지
+    if (!this.drink || !this.snack) {
+      this.$router.replace("/");
+      return;
     }
 
     setTimeout(() => {
       this.animate = true;
     }, 100);
   },
+methods: {
+    formatMenuName(name) {
+    if (!name) return "";
 
-  methods: {
-    goBack() {
-      this.$router.push("/");
-    },
+    // 10글자 미만 → 그대로
+    if (name.length < 10) return name;
 
-    async sendStar(star) {
-      if (!star) {
-        alert("별점을 선택해주세요! ⭐");
-        return;
-      }
-
-      this.selectedStar = star;
-
-      try {
-        await axios.post("/api/star", { star });
-        alert("의견이 반영되었습니다! 감사합니다 ☺️");
-      } catch (e) {
-        console.error("별점 저장 오류:", e);
-        alert("별점 저장 중 문제가 발생했습니다.");
-      }
-    },
+    // 10글자 이상 → 띄어쓰기 기준 줄바꿈
+    return name.split(" ").join("<br>");
   },
+  goBack() {
+    const menuStore = useMenuStore(this.$pinia);
+    menuStore.reset();
+    this.$router.push("/");
+  },
+
+  async sendStar(star) {
+    if (!star) {
+      alert("별점을 선택해주세요! ⭐");
+      return;
+    }
+
+    try {
+      await axios.post("/api/star", { star });
+      alert("의견이 반영되었습니다! 감사합니다 ☺️");
+    } catch (e) {
+      console.error("별점 저장 오류:", e);
+      alert("별점 저장 중 문제가 발생했습니다.");
+    }
+  }
+}
+
 };
 </script>
+
 
 
 
@@ -182,11 +195,13 @@ export default {
 .menu-inline {
   display: flex;
   justify-content: center;
+  align-items: flex-start;
   gap: 30px;
 }
 
 /* 파친코 애니메이션 */
 .menu-item {
+  width: 120px; 
   opacity: 0;
   transform: translateY(-40px);
   transition: all 0.7s cubic-bezier(.23,1.03,.32,1);
@@ -200,10 +215,13 @@ export default {
   transform: translateY(0);
 }
 
-/* 이미지 */
+/* 메뉴이미지 */
 .menu-image {
-  width: 100px;
+  height: 8vw;               /* 부모(menu-item) 기준 */
+  max-height: 90px;     /* 데스크탑 제한 */
   height: auto;
+  object-fit: contain;
+
 }
 
 /* 이름 박스 */
@@ -213,6 +231,12 @@ export default {
   background-color: #f6e7b1;
   border-radius: 4px;
   font-size: 13px;
+
+  text-align: center;          
+  display: flex;              
+  justify-content: center;
+  align-items: center;
+  line-height: 1.3;
 }
 
 /* 뒤로가기 버튼 */
