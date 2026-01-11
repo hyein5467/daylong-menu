@@ -43,7 +43,7 @@
   </div>
 </template>
 <script>
-import axios from "axios";
+import api from "../utils/axios";
 import MenuRecommendPage from "./menuRecommendPage.vue";
 import { useKeywordStore } from "@/stores/keywordStore";
 import { useMenuStore } from "@/stores/menuStore";
@@ -111,15 +111,9 @@ export default {
   this.$router.push("/menu-loading");
 
   try {
-    const res = await axios.post(
-      "/api/menus",
-      {
-        selected_keywords: this.selectedKeywords
-      },
-      {
-        withCredentials: true
-      }
-    );
+    const res = await api.post("/api/menus", {
+      selected_keywords: this.selectedKeywords
+    });
 
     if (res.data.status !== "success") {
       throw new Error("메뉴 추천 실패");
@@ -139,30 +133,14 @@ export default {
 
   } catch (err) {
 
+
+  if (err.response?.status === 429) {
+    return;
+  }
+  
   // ❌ 실패가 확정된 순간 → 결과 초기화
   menuStore.reset();
-
   const status = err.response?.status;
-  //const code = err.response?.data?.code;
-
-  /**
-   * ⛔ AI 토큰 사용량 초과 
-   */
-  if (status === 429) {
-    alert("AI 서비스의 이용 한도가 모두 소진되었습니다.\n내일 다시 이용해주세요!");
-    this.$router.replace("/service-exceeded"); // or /select 정책에 따라
-    return;
-  }
-
-  /**
-   * ⛔ 하루 3회 초과 (메뉴 정책)
-   */
-  if (status === 429) {
-    alert("고객님의 금일 추천 횟수(3회)가 소진되었습니다.\n내일 다시 이용해주세요.");
-    this.$router.replace("/select");
-    return;
-  }
-
   /**
    * ⛔ Python 요청 데이터 오류 (422)
    */

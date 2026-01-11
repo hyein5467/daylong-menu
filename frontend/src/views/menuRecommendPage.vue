@@ -51,7 +51,7 @@
 </template>
 
 <script>
-import axios from "axios";
+import api from "../utils/axios";
 
 export default {
   name: "MenuRecommendPage",
@@ -65,7 +65,7 @@ export default {
   },
 
   mounted() {
-    axios.get("/api/popular").then((res) => {
+    api.get("/api/popular").then((res) => {
       const { drink, snack } = res.data;
 
       this.drink = {
@@ -83,7 +83,7 @@ methods: {
   clickPopular() {
     this.activeTab = "popular";
 
-    axios.post("/api/click/popular").catch((err) => {
+    api.post("/api/click/popular").catch((err) => {
       console.error("popular_click update error:", err);
     });
   },
@@ -91,7 +91,7 @@ methods: {
   clickRecommend() {
     this.activeTab = "owner";
 
-    axios.post("/api/click/recommend").catch((err) => {
+    api.post("/api/click/recommend").catch((err) => {
       console.error("recommend_click update error:", err);
     });
   },

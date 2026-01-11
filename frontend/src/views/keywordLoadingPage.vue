@@ -39,7 +39,7 @@
 </template>
 
 <script>
-import axios from "axios";
+import api from "../utils/axios";
 import MenuRecommendPage from "./menuRecommendPage.vue";
 import { useKeywordStore } from "@/stores/keywordStore";
 
@@ -62,10 +62,10 @@ export default {
 
   try {
     // 1️⃣ userToken 발급
-    await axios.get("/api/bootstrap", { withCredentials: true });
+    await api.get("/api/bootstrap");
 
     // 2️⃣ 인기 메뉴
-    const popularRes = await axios.get("/api/popular", { withCredentials: true });
+    const popularRes = await api.get("/api/popular");
     const { drink, snack } = popularRes.data;
 
     this.drink = {
@@ -77,17 +77,8 @@ export default {
       image: `/menu_img/snacks/${snack.name}.png`,
     };
 
-    // 3️⃣ 키워드 요청 (🔥 여기서 429면 바로 catch로 감)
-    const keywordRes = await axios.get("/api/keywords", {
-      withCredentials: true,
-    });
-
-
-    if (keywordRes.status === 429 && keywordRes.code === "E429_QUOTA_EXCEEDED") {
-      this.$router.replace("/service-exceeded");
-      return;
-    }
-
+    // 3️⃣ 키워드 요청
+    const keywordRes = await api.get("/api/keywords");
 
     // 4️⃣ 정상일 때만 store 저장
     keywordStore.setKeywords(keywordRes.data.data);
@@ -100,14 +91,6 @@ export default {
  } catch (err) {
   if (moveTimer) {
     clearTimeout(moveTimer);
-  }
-
-  const status = err.response?.status;
-  const code = err.response?.data?.code;
-
-  if (status === 429 && code === "E429_QUOTA_EXCEEDED") {
-    this.$router.replace("/service-exceeded");
-    return;
   }
 
   console.error("초기 로딩 실패:", err);
