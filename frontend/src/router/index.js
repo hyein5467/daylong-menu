@@ -34,7 +34,16 @@ export default new Router({
       path: "/service-exceeded",
       name: "serviceExceeded",
       component: () => import("@/views/serviceExceeded.vue")
-    }
+    },
+       /* ===========================
+     * 🔒 사장님(hidden) 페이지
+     * =========================== */
+    {
+      path: "/owner",
+      name: "OwnerHome",
+      component: () => import("../views/owner/OwnerHome.vue"),
+      meta: { requiresOwner: true }
+    },
 
   ]
 });
