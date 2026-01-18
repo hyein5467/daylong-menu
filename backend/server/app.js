@@ -18,6 +18,9 @@ const axios = require("axios");
 const pool = require("../db"); // mysql2 pool
 require("dotenv").config();
 
+const ownerRoutes = require("./routes/owner");
+
+
 const app = express();
 
 /**
@@ -27,6 +30,7 @@ const app = express();
  */
 app.use(express.json());
 app.use(cookieParser());
+app.use("/api/owner", ownerRoutes);
 
 app.use(
   cors({
