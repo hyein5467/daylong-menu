@@ -11,7 +11,7 @@ warnings.filterwarnings("ignore", category=UserWarning, module="google.generativ
 
 from fastapi import HTTPException, status
 from openai import AsyncOpenAI, RateLimitError, APIConnectionError
-import google.generativeai as genai
+import google.genai as genai
 
 from schemas import KeywordResponse, AIRecommendationRequest, AIRecommendResponse
 from weather import WeatherService
