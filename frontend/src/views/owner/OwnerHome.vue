@@ -1,11 +1,25 @@
 <template>
   <section class="owner-menus">
 
-    <!-- HEADER -->
+    <!-- ================= TABS ================= -->
+    <div class="tabs">
+      <button
+        v-for="tab in tabs"
+        :key="tab.key"
+        class="tab-btn"
+        :class="{ active: activeTab === tab.key }"
+        @click="changeTab(tab.key)"
+      >
+        {{ tab.label }}
+      </button>
+    </div>
+
+    <!-- ================= HEADER ================= -->
     <header class="header">
-      <div class="left">
-        <h2>출력할 메뉴</h2>
-        <label class="select-all">
+      <div class="header-left">
+        <h2>{{ headerTitle }}</h2>
+
+        <label v-if="showSelectAll" class="select-all">
           <input
             type="checkbox"
             :checked="isAllSelected"
@@ -16,73 +30,162 @@
       </div>
 
       <button class="save-btn" @click="save">
-        저장하기
+        {{ activeTab === 'delete' ? '삭제하기' : '저장하기' }}
       </button>
     </header>
 
-    <!-- MENU GRID -->
-    <div class="menu-grid">
-      <div
-        v-for="menu in menus"
-        :key="menu.id"
-        class="menu-card"
-        :class="{ selected: selectedIds.includes(menu.id) }"
-        @click="toggle(menu.id)"
-      >
-        <img :src="getImageUrl(menu)" />
-        <span class="menu-label">{{ menu.name }}</span>
+    <!-- ================= 출력 / 삭제 ================= -->
+    <div
+      v-if="activeTab === 'enabled' || activeTab === 'delete'"
+      class="menu-grid"
+    >
+    <div
+      v-for="menu in menus"
+      :key="menu.id"
+      class="menu-card"
+      :class="{
+        selected: selectedIds.includes(menu.id),
+        danger: activeTab === 'delete',
+        locked:
+          (activeTab === 'enabled' || activeTab === 'delete') &&
+          lockedMenuIds.includes(menu.id)
+
+      }"
+      @click="toggle(menu.id)">
+        <img class="menu-image" :src="getImageUrl(menu)" />
+
+        <div class="menu-label">
+          {{ menu.name }}
+          <span class="menu-type">
+            ({{ menu.type === 1 ? '음료' : '디저트' }})
+          </span>
+        </div>
       </div>
 
-      <!-- ADD CARD -->
-      <div class="menu-card add-card" @click="openAddModal">
+      <div
+        v-if="activeTab === 'enabled'"
+        class="menu-card add-card"
+        @click="openAddModal"
+      >
         +
       </div>
     </div>
 
-    <!-- ADD MODAL -->
+    <!-- ================= 인기 메뉴 ================= -->
+    <div v-if="activeTab === 'popular'" class="panel">
+      <h3 class="section-title">음료</h3>
+      <div class="menu-grid">
+        <div
+          v-for="m in drinkMenus"
+          :key="m.id"
+          class="menu-card"
+          :class="{ selected: popular.drink === m.id }"
+          @click="popular.drink = m.id"
+        >
+          <img class="menu-image" :src="getImageUrl(m)" />
+          <div class="menu-label">{{ m.name }} (음료)</div>
+        </div>
+      </div>
+
+      <h3 class="section-title">디저트</h3>
+      <div class="menu-grid">
+        <div
+          v-for="m in snackMenus"
+          :key="m.id"
+          class="menu-card"
+          :class="{ selected: popular.snack === m.id }"
+          @click="popular.snack = m.id"
+        >
+          <img class="menu-image" :src="getImageUrl(m)" />
+          <div class="menu-label">{{ m.name }} (디저트)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 추천 메뉴 ================= -->
+    <div v-if="activeTab === 'recommend'" class="panel">
+      <h3 class="section-title">음료</h3>
+      <div class="menu-grid">
+        <div
+          v-for="m in drinkMenus"
+          :key="m.id"
+          class="menu-card"
+          :class="{ selected: recommend.drink === m.id }"
+          @click="recommend.drink = m.id"
+        >
+          <img class="menu-image" :src="getImageUrl(m)" />
+          <div class="menu-label">{{ m.name }} (음료)</div>
+        </div>
+      </div>
+
+      <h3 class="section-title">디저트</h3>
+      <div class="menu-grid">
+        <div
+          v-for="m in snackMenus"
+          :key="m.id"
+          class="menu-card"
+          :class="{ selected: recommend.snack === m.id }"
+          @click="recommend.snack = m.id"
+        >
+          <img class="menu-image" :src="getImageUrl(m)" />
+          <div class="menu-label">{{ m.name }} (디저트)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= ADD MODAL ================= -->
     <div v-if="showAddModal" class="modal-backdrop">
       <div class="modal">
+
         <div class="modal-header">
-          <h3>신메뉴 추가하기</h3>
-          <button class="close" @click="closeAddModal">✕</button>
+          <h3>신메뉴 추가</h3>
+          <button class="close-btn" @click="closeAddModal">✕</button>
         </div>
 
         <div class="modal-body">
+          <!-- IMAGE -->
+          <div class="image-upload" @click="triggerFile">
+            <input
+              ref="fileInput"
+              type="file"
+              accept="image/*"
+              @change="onFileChange"
+              hidden
+            />
 
-          <!-- IMAGE UPLOAD -->
-          <label class="image-upload">
-            <input type="file" accept="image/*" @change="onFileChange" />
             <div v-if="previewUrl" class="preview">
               <img :src="previewUrl" />
             </div>
+
             <div v-else class="placeholder">
-              사진 업로드
+              <span>📷</span>
+              <p>사진 업로드</p>
             </div>
-          </label>
+          </div>
 
           <!-- TYPE -->
-          <div class="form-row">
-            <label>
-              <input type="radio" value="1" v-model="newMenu.type" />
+          <div class="type-select">
+            <label :class="{ active: newMenu.type === 1 }">
+              <input type="radio" :value="1" v-model="newMenu.type" />
               음료
             </label>
-            <label>
-              <input type="radio" value="2" v-model="newMenu.type" />
+
+            <label :class="{ active: newMenu.type === 2 }">
+              <input type="radio" :value="2" v-model="newMenu.type" />
               디저트
             </label>
           </div>
 
           <!-- NAME -->
-          <div class="form-row">
-            <input
-              type="text"
-              v-model="newMenu.name"
-              placeholder="메뉴명"
-            />
-          </div>
+          <input
+            class="name-input"
+            v-model="newMenu.name"
+            placeholder="메뉴명"
+            maxlength="32"
+          />
 
-          <button class="add-btn" @click="addMenu">
-            추가하기
+          <button class="modal-save-btn" @click="addMenu">
+            메뉴 추가
           </button>
         </div>
       </div>
@@ -99,85 +202,221 @@ export default {
 
   data () {
     return {
+      activeTab: "enabled",
+
+      tabs: [
+        { key: "enabled", label: "출력메뉴" },
+        { key: "delete", label: "메뉴삭제" },
+        { key: "popular", label: "인기메뉴" },
+        { key: "recommend", label: "추천메뉴" }
+      ],
+
       menus: [],
       selectedIds: [],
 
-      showAddModal: false,
-      newMenu: {
-        name: "",
-        type: null
-      },
+      popular: { drink: null, snack: null },
+      recommend: { drink: null, snack: null },
 
+      showAddModal: false,
+
+      newMenu: { name: "", type: 1 },
       imageFile: null,
       previewUrl: null
     };
   },
 
   computed: {
+    headerTitle () {
+      return {
+        enabled: "출력할 메뉴",
+        delete: "삭제할 메뉴",
+        popular: "인기 메뉴 설정",
+        recommend: "추천 메뉴 설정"
+      }[this.activeTab];
+    },
+
+    showSelectAll () {
+      return this.activeTab === "enabled";
+    },
+
     isAllSelected () {
       return (
         this.menus.length > 0 &&
-        this.menus.every(m => this.selectedIds.includes(m.id))
+        this.selectedIds.length === this.menus.length
       );
+    },
+
+    drinkMenus () {
+      return this.menus.filter(m => m.enabled === 1 && m.type === 1);
+    },
+
+    snackMenus () {
+      return this.menus.filter(m => m.enabled === 1 && m.type === 2);
+    },
+
+    lockedMenuIds () {
+      const ids = [];
+
+      if (this.popular.drink) ids.push(this.popular.drink);
+      if (this.popular.snack) ids.push(this.popular.snack);
+      if (this.recommend.drink) ids.push(this.recommend.drink);
+      if (this.recommend.snack) ids.push(this.recommend.snack);
+
+      return Array.from(new Set(ids));
     }
-  },
+      },
 
   async mounted () {
     await this.fetchMenus();
+    await this.fetchRecommend();
+    this.syncSelectedFromEnabled();
   },
 
   methods: {
-    /* ------------------------------
-     * API
-     * ------------------------------ */
+    changeTab (tab) {
+      this.activeTab = tab;
+
+      if (tab === "delete") {
+        this.selectedIds = [];
+      }
+
+      if (tab === "enabled") {
+        this.syncSelectedFromEnabled();
+      }
+    },
+
     async fetchMenus () {
       const res = await api.get("/api/owner/menus");
-      this.menus = res.data.data;
+      this.menus = res.data.data || [];
+    },
+
+    async fetchRecommend () {
+      const res = await api.get("/api/owner/menus/recommend");
+      const d = res.data.data;
+      if (!d) return;
+
+      this.popular.drink = d.popular_drink;
+      this.popular.snack = d.popular_snack;
+      this.recommend.drink = d.recommend_drink;
+      this.recommend.snack = d.recommend_snack;
+    },
+
+    syncSelectedFromEnabled () {
       this.selectedIds = this.menus
         .filter(m => m.enabled === 1)
         .map(m => m.id);
     },
 
-    /* ------------------------------
-     * IMAGE (Cloudinary URL)
-     * ------------------------------ */
     getImageUrl (menu) {
-      const cloudName = process.env.VUE_APP_CLOUDINARY_CLOUD_NAME;
-      const filename = menu.name.replace(/\s+/g, "_");
-      return `https://res.cloudinary.com/${cloudName}/image/upload/${encodeURIComponent(filename)}`;
+      const cloud = process.env.VUE_APP_CLOUDINARY_CLOUD_NAME;
+      return `https://res.cloudinary.com/${cloud}/image/upload/${encodeURIComponent(menu.name)}`;
     },
 
-    /* ------------------------------
-     * SELECTION
-     * ------------------------------ */
-    toggle (id) {
-      const idx = this.selectedIds.indexOf(id);
-      if (idx !== -1) this.selectedIds.splice(idx, 1);
-      else this.selectedIds.push(id);
-    },
+  toggle (id) {
+    // 🔒 출력메뉴 탭에서 인기/추천 메뉴는 해제 불가
+    if (
+      (this.activeTab === "enabled" || this.activeTab === "delete") &&
+      this.lockedMenuIds.includes(id)
+    ) {
+      return;
+    }
 
-    toggleAll (e) {
-      this.selectedIds = e.target.checked
-        ? this.menus.map(m => m.id)
-        : [];
-    },
 
-    /* ------------------------------
-     * SAVE
-     * ------------------------------ */
+    const idx = this.selectedIds.indexOf(id);
+    if (idx >= 0) this.selectedIds.splice(idx, 1);
+    else this.selectedIds.push(id);
+  },
+
+   toggleAll (e) {
+    if (e.target.checked) {
+      this.selectedIds = this.menus.map(m => m.id);
+    } else {
+      // 🔒 인기/추천 메뉴는 항상 남김
+      this.selectedIds = [...this.lockedMenuIds];
+    }
+  },
+
     async save () {
+
+      /* ================= 삭제 ================= */
+      if (this.activeTab === "delete") {
+        if (!this.selectedIds.length) {
+          alert("삭제할 메뉴를 선택하세요");
+          return;
+        }
+
+        const ok = window.confirm(
+          `선택한 메뉴 ${this.selectedIds.length}개를 정말 삭제하시겠습니까?\n` +
+          `삭제된 메뉴는 복구할 수 없습니다.`
+        );
+
+        if (!ok) {
+          return;
+        }
+
+        try {
+          await api.post("/api/owner/menus/delete", {
+            ids: this.selectedIds
+          });
+
+          alert("삭제되었습니다");
+          await this.fetchMenus();
+          this.selectedIds = [];
+        } catch (e) {
+          alert(
+            e.response?.data?.message ||
+            "삭제할 수 없는 메뉴가 포함되어 있습니다."
+          );
+        }
+
+        return; // ✅ delete 끝
+      }
+
+      /* ================= 인기 메뉴 ================= */
+      if (this.activeTab === "popular") {
+        if (!this.popular.drink || !this.popular.snack) {
+          alert("음료와 디저트를 각각 선택하세요");
+          return;
+        }
+
+        await api.post("/api/owner/menus/recommend", {
+          popular_drink: this.popular.drink,
+          popular_snack: this.popular.snack
+        });
+
+        alert("저장되었습니다");
+        return;
+      }
+
+      /* ================= 추천 메뉴 ================= */
+      if (this.activeTab === "recommend") {
+        if (!this.recommend.drink || !this.recommend.snack) {
+          alert("음료와 디저트를 각각 선택하세요");
+          return;
+        }
+
+        await api.post("/api/owner/menus/recommend", {
+          recommend_drink: this.recommend.drink,
+          recommend_snack: this.recommend.snack
+        });
+
+        alert("저장되었습니다");
+        return;
+      }
+
+      /* ================= 출력 메뉴 ================= */
       const payload = this.menus.map(m => ({
         id: m.id,
         enabled: this.selectedIds.includes(m.id) ? 1 : 0
       }));
 
       await api.post("/api/owner/menus/save", { menus: payload });
+      await this.fetchMenus();
+      this.syncSelectedFromEnabled();
+
       alert("저장되었습니다");
     },
 
-    /* ------------------------------
-     * ADD MENU
-     * ------------------------------ */
     openAddModal () {
       this.showAddModal = true;
     },
@@ -185,6 +424,10 @@ export default {
     closeAddModal () {
       this.showAddModal = false;
       this.resetAddForm();
+    },
+
+    triggerFile () {
+      this.$refs.fileInput.click();
     },
 
     onFileChange (e) {
@@ -196,7 +439,7 @@ export default {
     },
 
     async addMenu () {
-      if (!this.newMenu.name || !this.newMenu.type || !this.imageFile) {
+      if (!this.newMenu.name || !this.imageFile) {
         alert("모든 항목을 입력하세요");
         return;
       }
@@ -204,18 +447,20 @@ export default {
       const form = new FormData();
       form.append("name", this.newMenu.name);
       form.append("type", this.newMenu.type);
-      form.append("image", this.imageFile); // ⭐ backend multer key
+      form.append("image", this.imageFile);
 
-      await api.post("/api/owner/menus", form, {
-        headers: { "Content-Type": "multipart/form-data" }
-      });
-
-      this.closeAddModal();
-      await this.fetchMenus();
+      try {
+        await api.post("/api/owner/menus", form);
+        this.closeAddModal();
+        await this.fetchMenus();
+        this.syncSelectedFromEnabled();
+      } catch (e) {
+        alert(e.response?.data?.message || "메뉴 추가 실패");
+      }
     },
 
     resetAddForm () {
-      this.newMenu = { name: "", type: null };
+      this.newMenu = { name: "", type: 1 };
       this.imageFile = null;
       this.previewUrl = null;
     }
@@ -224,19 +469,58 @@ export default {
 </script>
 
 <style scoped>
+/* === BASE === */
 .owner-menus {
   padding: 24px;
   background: #fffdf4;
 }
 
-/* HEADER */
-.header {
+/* === TABS === */
+.tabs {
   display: flex;
-  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 16px;
 }
 
-/* GRID */
+.tab-btn {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  background: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tab-btn.active {
+  background: #f6e19c;
+  border-color: #d2b55b;
+}
+
+/* === HEADER === */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* === SAVE BUTTON === */
+.save-btn {
+  padding: 10px 16px;
+  border-radius: 5px;
+  border: 1px solid #d2b55b;
+  background: #f7e7a8;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* === GRID === */
 .menu-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
@@ -244,63 +528,82 @@ export default {
 }
 
 .menu-card {
-  border: 1px solid #ccc;
-  padding: 8px;
-  text-align: center;
-  cursor: pointer;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 10px;
   background: #fff;
+  cursor: pointer;
+  text-align: center;
 }
 
 .menu-card.selected {
   border: 2px solid #f2c94c;
 }
 
-.menu-card img {
+.menu-card.danger.selected {
+  border-color: #ff6b6b;
+}
+
+.menu-image {
   width: 100%;
   height: 90px;
   object-fit: contain;
 }
 
 .menu-label {
-  display: inline-block;
-  margin-top: 6px;
+  margin-top: 8px;
   background: #f6e19c;
-  padding: 2px 6px;
+  padding: 4px 8px;
+  border-radius: 8px;
   font-size: 13px;
+  font-weight: 700;
 }
 
-/* ADD */
+.menu-type {
+  font-size: 11px;
+  color: #6b5c2b;
+}
+
+/* === ADD CARD === */
 .add-card {
   font-size: 36px;
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
 }
 
-/* MODAL */
+/* === MODAL === */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
+  background: rgba(0,0,0,0.45);
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
 }
 
 .modal {
-  width: 360px;
+  width: 420px;
   background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.modal-header {
+  padding: 16px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+}
+
+.modal-body {
   padding: 16px;
 }
 
-.image-upload input {
-  display: none;
-}
-
-.placeholder,
-.preview {
-  border: 1px solid #ccc;
+.image-upload {
   height: 140px;
+  border: 1px dashed #ddd;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -310,13 +613,50 @@ export default {
 .preview img {
   max-width: 100%;
   max-height: 100%;
+  object-fit: contain;
 }
 
-.add-btn {
-  width: 100%;
-  background: #f6e19c;
-  padding: 8px;
-  border: 1px solid #d2b55b;
+.type-select {
+  display: flex;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.type-select label {
+  flex: 1;
+  text-align: center;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
   cursor: pointer;
 }
+
+.type-select label.active {
+  background: #f6e19c;
+  border-color: #d2b55b;
+}
+
+.type-select input {
+  display: none;
+}
+
+.name-input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  margin-bottom: 14px;
+}
+
+.modal-save-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f2c94c;
+  border: none;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+
 </style>
