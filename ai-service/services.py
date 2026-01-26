@@ -11,7 +11,8 @@ warnings.filterwarnings("ignore", category=UserWarning, module="google.generativ
 
 from fastapi import HTTPException, status
 from openai import AsyncOpenAI, RateLimitError, APIConnectionError
-import google.genai as genai
+from google import genai
+from google.genai import types
 
 from schemas import KeywordResponse, AIRecommendationRequest, AIRecommendResponse
 from weather import WeatherService
@@ -39,16 +40,7 @@ class AIService:
             print("⚠️ 경고: API Key가 설정되지 않았습니다.")
 
         if self.provider == "GEMINI":
-            genai.configure(api_key=api_key)
-
-            # ★ [수정됨] 범인 검거 완료! 1.5 대신 2.5 사용
-            self.gemini_model = genai.GenerativeModel(
-                'gemini-2.5-flash',  # <--- 여기를 2.5로 변경!
-                generation_config={
-                    "response_mime_type": "application/json",
-                    "temperature": 0.7,
-                }
-            )
+            self.gemini_client = genai.Client(api_key=api_key)
         else:
             self.client = AsyncOpenAI(api_key=api_key)
 
@@ -57,7 +49,17 @@ class AIService:
             # 🟣 Gemini 호출
             if self.provider == "GEMINI":
                 full_prompt = f"{system_prompt}\n\n[사용자 요청]\n{user_prompt}"
-                response = await self.gemini_model.generate_content_async(full_prompt)
+
+                # client.aio.models.generate_content 사용 (비동기)
+                response = await self.gemini_client.aio.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=full_prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",  # JSON 강제
+                        temperature=0.7
+                    )
+                )
+                # 신형은 response.text로 바로 접근 가능
                 return json.loads(response.text)
             # 🔵 OpenAI 호출
             else:
