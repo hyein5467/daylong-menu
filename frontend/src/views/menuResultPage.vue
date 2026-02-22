@@ -19,16 +19,14 @@
 
         <!-- DRINK -->
         <div class="menu-item" :class="{ show: animate }">
-          <img :src="drink.image" class="menu-image" />
-          <div class="menu-name" v-html="formatMenuName(drink.name)"></div>
-          
+          <img :src="drinkImage" class="menu-image" />
+          <div class="menu-name" v-html="formatMenuName(drinkName)"></div>
         </div>
 
         <!-- SNACK -->
         <div class="menu-item" :class="{ show: animate }">
-          <img :src="snack.image" class="menu-image" />
-          <div class="menu-name" v-html="formatMenuName(snack.name)"></div>
-
+          <img :src="snackImage" class="menu-image" />
+          <div class="menu-name" v-html="formatMenuName(snackName)"></div>
         </div>
 
       </div>
@@ -58,10 +56,7 @@
 
     <!-- 인기메뉴 + 사장님추천 -->
     <footer class="footer-section">
-      <MenuRecommendPage
-        :drink="drink"
-        :snack="snack"
-      />
+      <MenuRecommendPage />
     </footer>
 
   </div>
@@ -87,20 +82,34 @@ export default {
   },
 
   computed: {
-    drink() {
-      return useMenuStore().drink;
+    store() {
+      return useMenuStore();
     },
-    snack() {
-      return useMenuStore().snack;
+
+    drinkName() {
+      return this.store.drink?.name || "";
     },
+
+    snackName() {
+      return this.store.snack?.name || "";
+    },
+
     reason() {
-      return useMenuStore().reason;
+      return this.store.reason;
+    },
+
+    drinkImage() {
+      return this.makeCloudinaryUrl(this.drinkName);
+    },
+
+    snackImage() {
+      return this.makeCloudinaryUrl(this.snackName);
     }
   },
 
   mounted() {
     // 새로고침 / 직접 접근 방지
-    if (!this.drink || !this.snack) {
+    if (!this.drinkName || !this.snackName) {
       this.$router.replace("/");
       return;
     }
@@ -109,43 +118,47 @@ export default {
       this.animate = true;
     }, 100);
   },
-methods: {
+
+  methods: {
+    makeCloudinaryUrl(name) {
+      if (!name) return "";
+
+      const cloud = process.env.VUE_APP_CLOUDINARY_CLOUD_NAME;
+      return `https://res.cloudinary.com/${cloud}/image/upload/${encodeURIComponent(
+        name
+      )}`;
+    },
+
     formatMenuName(name) {
-    if (!name) return "";
+      if (!name) return "";
 
-    // 10글자 미만 → 그대로
-    if (name.length < 10) return name;
+      if (name.length < 10) return name;
+      return name.split(" ").join("<br>");
+    },
 
-    // 10글자 이상 → 띄어쓰기 기준 줄바꿈
-    return name.split(" ").join("<br>");
-  },
-  goBack() {
-    const menuStore = useMenuStore(this.$pinia);
-    menuStore.reset();
-    this.$router.push("/");
-  },
+    goBack() {
+      const menuStore = useMenuStore(this.$pinia);
+      menuStore.reset();
+      this.$router.push("/");
+    },
 
-  async sendStar(star) {
-    if (!star) {
-      alert("별점을 선택해주세요! ⭐");
-      return;
-    }
+    async sendStar(star) {
+      if (!star) {
+        alert("별점을 선택해주세요! ⭐");
+        return;
+      }
 
-    try {
-      await axios.post("/api/star", { star });
-      alert("의견이 반영되었습니다! 감사합니다 ☺️");
-    } catch (e) {
-      console.error("별점 저장 오류:", e);
-      alert("별점 저장 중 문제가 발생했습니다.");
+      try {
+        await axios.post("/api/star", { star });
+        alert("의견이 반영되었습니다! 감사합니다 ☺️");
+      } catch (e) {
+        console.error("별점 저장 오류:", e);
+        alert("별점 저장 중 문제가 발생했습니다.");
+      }
     }
   }
-}
-
 };
 </script>
-
-
-
 
 <style scoped>
 /* 전체 */

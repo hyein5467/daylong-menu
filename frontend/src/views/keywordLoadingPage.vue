@@ -29,10 +29,7 @@
 
     <!-- FOOTER 추천 메뉴 -->
     <footer class="footer-section">
-      <MenuRecommendPage
-        :drink="drink"
-        :snack="snack"
-      />
+      <MenuRecommendPage />
     </footer>
 
   </div>
@@ -63,19 +60,6 @@ export default {
   try {
     // 1️⃣ userToken 발급
     await api.get("/api/bootstrap");
-
-    // 2️⃣ 인기 메뉴
-    const popularRes = await api.get("/api/popular");
-    const { drink, snack } = popularRes.data;
-
-    this.drink = {
-      name: drink.name,
-      image: `/menu_img/drinks/${drink.name}.png`,
-    };
-    this.snack = {
-      name: snack.name,
-      image: `/menu_img/snacks/${snack.name}.png`,
-    };
 
     // 3️⃣ 키워드 요청
     const keywordRes = await api.get("/api/keywords");
