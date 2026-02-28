@@ -124,10 +124,13 @@ export default {
       if (!name) return "";
 
       const cloud = process.env.VUE_APP_CLOUDINARY_CLOUD_NAME;
-      return `https://res.cloudinary.com/${cloud}/image/upload/${encodeURIComponent(
-        name
-      )}`;
-    },
+
+      const safeName = name
+        .trim()
+        .replace(/\s+/g, "_");
+
+      return `https://res.cloudinary.com/${cloud}/image/upload/${safeName}`;
+    },      
 
     formatMenuName(name) {
       if (!name) return "";

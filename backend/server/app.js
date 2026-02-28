@@ -63,40 +63,52 @@ app.get("/api/bootstrap", (req, res) => {
 });
 
 /**
- * 인기 메뉴 조회
+ * 인기 / 사장님 추천 메뉴 조회
  */
 app.get("/api/popular", async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      "SELECT popular_drink, popular_snack FROM menu_recommend LIMIT 1"
-    );
+    const [[row]] = await pool.query(`
+      SELECT
+        popular_drink,
+        popular_snack,
+        recommend_drink,
+        recommend_snack
+      FROM menu_recommend
+      LIMIT 1
+    `);
 
-    if (!rows.length) {
-      return res.status(404).json({ error: "No popular menu data" });
+    if (!row) {
+      return res.status(404).json({ error: "No menu recommend data" });
     }
 
-    const drinkId = rows[0].popular_drink;
-    const snackId = rows[0].popular_snack;
-
-    const [[drink]] = await pool.query(
-      "SELECT name FROM menu WHERE id = ?",
-      [drinkId]
-    );
-
-    const [[snack]] = await pool.query(
-      "SELECT name FROM menu WHERE id = ?",
-      [snackId]
-    );
+    const [
+      [[popularDrink]],
+      [[popularSnack]],
+      [[recommendDrink]],
+      [[recommendSnack]]
+    ] = await Promise.all([
+      pool.query("SELECT name FROM menu WHERE id = ?", [row.popular_drink]),
+      pool.query("SELECT name FROM menu WHERE id = ?", [row.popular_snack]),
+      pool.query("SELECT name FROM menu WHERE id = ?", [row.recommend_drink]),
+      pool.query("SELECT name FROM menu WHERE id = ?", [row.recommend_snack]),
+    ]);
 
     res.json({
-      drink: { name: drink?.name || null },
-      snack: { name: snack?.name || null }
+      popular: {
+        drink: { name: popularDrink?.name || null },
+        snack: { name: popularSnack?.name || null },
+      },
+      recommend: {
+        drink: { name: recommendDrink?.name || null },
+        snack: { name: recommendSnack?.name || null },
+      }
     });
   } catch (err) {
-    console.error(err);
+    console.error("GET /api/popular error", err);
     res.status(500).json({ error: "DB error" });
   }
 });
+
 
 /**
  * 별점 저장

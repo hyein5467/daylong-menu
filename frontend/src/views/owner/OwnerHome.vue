@@ -29,29 +29,68 @@
         </label>
       </div>
 
-      <button class="save-btn" @click="save">
+      <!-- 만족도 탭에서는 저장/삭제 버튼 숨김 -->
+      <button
+        v-if="activeTab !== 'statistics'"
+        class="save-btn"
+        @click="save"
+      >
         {{ activeTab === 'delete' ? '삭제하기' : '저장하기' }}
       </button>
     </header>
+
+    <!-- ================= 만족도 결과 ================= -->
+    <div v-if="activeTab === 'statistics'" class="statistics-panel">
+      <div class="stats-top">
+        <div class="average">
+          평균 평점 <span class="star">⭐</span> {{ average.toFixed(1) }}
+        </div>
+        <div class="total">
+          총 참여 수: {{ total }}명
+        </div>
+      </div>
+
+      <div class="bar-list">
+        <div
+          v-for="star in 6"
+          :key="star"
+          class="bar-row"
+        >
+          <span class="label">{{ 6 - star }}점</span>
+
+          <div class="bar-container">
+            <div
+              class="bar-fill"
+              :style="{ width: getPercent(6 - star) + '%' }"
+            ></div>
+          </div>
+
+          <span class="count">
+            {{ getCount(6 - star) }}명
+            <span class="percent">({{ getPercent(6 - star).toFixed(0) }}%)</span>
+          </span>
+        </div>
+      </div>
+    </div>
 
     <!-- ================= 출력 / 삭제 ================= -->
     <div
       v-if="activeTab === 'enabled' || activeTab === 'delete'"
       class="menu-grid"
     >
-    <div
-      v-for="menu in menus"
-      :key="menu.id"
-      class="menu-card"
-      :class="{
-        selected: selectedIds.includes(menu.id),
-        danger: activeTab === 'delete',
-        locked:
-          (activeTab === 'enabled' || activeTab === 'delete') &&
-          lockedMenuIds.includes(menu.id)
-
-      }"
-      @click="toggle(menu.id)">
+      <div
+        v-for="menu in menus"
+        :key="menu.id"
+        class="menu-card"
+        :class="{
+          selected: selectedIds.includes(menu.id),
+          danger: activeTab === 'delete',
+          locked:
+            (activeTab === 'enabled' || activeTab === 'delete') &&
+            lockedMenuIds.includes(menu.id)
+        }"
+        @click="toggle(menu.id)"
+      >
         <img class="menu-image" :src="getImageUrl(menu)" />
 
         <div class="menu-label">
@@ -205,10 +244,11 @@ export default {
       activeTab: "enabled",
 
       tabs: [
-        { key: "enabled", label: "출력메뉴" },
+        { key: "enabled", label: "대상메뉴" },
         { key: "delete", label: "메뉴삭제" },
         { key: "popular", label: "인기메뉴" },
-        { key: "recommend", label: "추천메뉴" }
+        { key: "recommend", label: "추천메뉴" },
+        { key: "statistics", label: "만족도" } // ✅ 추가
       ],
 
       menus: [],
@@ -221,17 +261,23 @@ export default {
 
       newMenu: { name: "", type: 1 },
       imageFile: null,
-      previewUrl: null
+      previewUrl: null,
+
+      // ✅ 만족도 통계
+      starCounts: [], // [{star:0..5, count:n}]
+      starTotal: 0,
+      starAverage: 0
     };
   },
 
   computed: {
     headerTitle () {
       return {
-        enabled: "출력할 메뉴",
+        enabled: "대상 메뉴",
         delete: "삭제할 메뉴",
         popular: "인기 메뉴 설정",
-        recommend: "추천 메뉴 설정"
+        recommend: "추천 메뉴 설정",
+        statistics: "고객 만족도 결과" // ✅ 추가
       }[this.activeTab];
     },
 
@@ -263,12 +309,26 @@ export default {
       if (this.recommend.snack) ids.push(this.recommend.snack);
 
       return Array.from(new Set(ids));
+    },
+
+    // ✅ 만족도 표시용 (템플릿에서 쓰기 좋게 computed로 노출)
+    total () {
+      return this.starTotal || 0;
+    },
+
+    average () {
+      return this.starAverage || 0;
+    },
+
+    counts () {
+      return this.starCounts || [];
     }
-      },
+  },
 
   async mounted () {
     await this.fetchMenus();
     await this.fetchRecommend();
+    await this.fetchStatistics(); // ✅ 추가
     this.syncSelectedFromEnabled();
   },
 
@@ -282,6 +342,10 @@ export default {
 
       if (tab === "enabled") {
         this.syncSelectedFromEnabled();
+      }
+
+      if (tab === "statistics") {
+        this.fetchStatistics();
       }
     },
 
@@ -301,43 +365,77 @@ export default {
       this.recommend.snack = d.recommend_snack;
     },
 
+    // ✅ 만족도 조회
+    async fetchStatistics () {
+      try {
+        const res = await api.get("/api/owner/statistics/star");
+        const d = res.data.data || {};
+
+        // 기대 형태:
+        // { counts: [{star:0..5, count:n}], total: n, average: x }
+        this.starCounts = d.counts || [];
+        this.starTotal = d.total || 0;
+        this.starAverage = Number(d.average || 0);
+      } catch (e) {
+        // 실패해도 페이지는 뜨게
+        this.starCounts = [];
+        this.starTotal = 0;
+        this.starAverage = 0;
+      }
+    },
+
+    // ✅ 별점별 count
+    getCount (star) {
+      const found = this.counts.find(c => c.star === star);
+      return found ? Number(found.count) : 0;
+    },
+
+    // ✅ 별점별 퍼센트
+    getPercent (star) {
+      if (!this.total) return 0;
+      return (this.getCount(star) / this.total) * 100;
+    },
+
     syncSelectedFromEnabled () {
       this.selectedIds = this.menus
         .filter(m => m.enabled === 1)
         .map(m => m.id);
     },
 
-    getImageUrl (menu) {
+    getImageUrl(menu) {
       const cloud = process.env.VUE_APP_CLOUDINARY_CLOUD_NAME;
-      return `https://res.cloudinary.com/${cloud}/image/upload/${encodeURIComponent(menu.name)}`;
+
+      const safeName = (menu.name || "")
+        .trim()
+        .replace(/\s+/g, "_");
+
+      return `https://res.cloudinary.com/${cloud}/image/upload/${safeName}`;
     },
 
-  toggle (id) {
-    // 🔒 출력메뉴 탭에서 인기/추천 메뉴는 해제 불가
-    if (
-      (this.activeTab === "enabled" || this.activeTab === "delete") &&
-      this.lockedMenuIds.includes(id)
-    ) {
-      return;
-    }
+    toggle (id) {
+      // 🔒 대상메뉴/삭제 탭에서 인기/추천 메뉴는 해제 불가
+      if (
+        (this.activeTab === "enabled" || this.activeTab === "delete") &&
+        this.lockedMenuIds.includes(id)
+      ) {
+        return;
+      }
 
+      const idx = this.selectedIds.indexOf(id);
+      if (idx >= 0) this.selectedIds.splice(idx, 1);
+      else this.selectedIds.push(id);
+    },
 
-    const idx = this.selectedIds.indexOf(id);
-    if (idx >= 0) this.selectedIds.splice(idx, 1);
-    else this.selectedIds.push(id);
-  },
-
-   toggleAll (e) {
-    if (e.target.checked) {
-      this.selectedIds = this.menus.map(m => m.id);
-    } else {
-      // 🔒 인기/추천 메뉴는 항상 남김
-      this.selectedIds = [...this.lockedMenuIds];
-    }
-  },
+    toggleAll (e) {
+      if (e.target.checked) {
+        this.selectedIds = this.menus.map(m => m.id);
+      } else {
+        // 🔒 인기/추천 메뉴는 항상 남김
+        this.selectedIds = [...this.lockedMenuIds];
+      }
+    },
 
     async save () {
-
       /* ================= 삭제 ================= */
       if (this.activeTab === "delete") {
         if (!this.selectedIds.length) {
@@ -658,5 +756,78 @@ export default {
   cursor: pointer;
 }
 
+/* ================= 만족도 스타일(추가) ================= */
+.statistics-panel {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 18px;
+}
 
+.stats-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.average {
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.star {
+  margin: 0 4px;
+}
+
+.total {
+  font-size: 13px;
+  color: #777;
+  font-weight: 700;
+}
+
+.bar-list {
+  margin-top: 8px;
+}
+
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.label {
+  width: 44px;
+  font-weight: 800;
+  color: #6b5c2b;
+}
+
+.bar-container {
+  flex: 1;
+  height: 14px;
+  background: #eee;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: #f2c94c;
+}
+
+.count {
+  width: 120px;
+  text-align: right;
+  font-weight: 800;
+  color: #333;
+  font-size: 12px;
+}
+
+.percent {
+  color: #777;
+  font-weight: 700;
+  margin-left: 6px;
+}
 </style>

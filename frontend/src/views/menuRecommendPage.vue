@@ -95,43 +95,46 @@ export default {
     };
   },
 
-  mounted() {
-    api.get("/api/popular").then((res) => {
-      const cloud = process.env.VUE_APP_CLOUDINARY_CLOUD_NAME;
-      const { popular, recommend } = res.data;
+ mounted() {
+  api.get("/api/popular").then((res) => {
+    const { popular, recommend } = res.data;
 
-      const makeImage = (name) =>
-        name
-          ? `https://res.cloudinary.com/${cloud}/image/upload/${encodeURIComponent(
-              name
-            )}`
-          : "";
+    // 인기 메뉴
+    this.popular.drink = {
+      name: popular.drink.name,
+      image: this.getImageUrl(popular.drink),
+    };
 
-      // 인기 메뉴
-      this.popular.drink = {
-        name: popular.drink.name,
-        image: makeImage(popular.drink.name),
-      };
+    this.popular.snack = {
+      name: popular.snack.name,
+      image: this.getImageUrl(popular.snack),
+    };
 
-      this.popular.snack = {
-        name: popular.snack.name,
-        image: makeImage(popular.snack.name),
-      };
+    // 사장님 추천
+    this.recommend.drink = {
+      name: recommend.drink.name,
+      image: this.getImageUrl(recommend.drink),
+    };
 
-      // 사장님 추천
-      this.recommend.drink = {
-        name: recommend.drink.name,
-        image: makeImage(recommend.drink.name),
-      };
-
-      this.recommend.snack = {
-        name: recommend.snack.name,
-        image: makeImage(recommend.snack.name),
-      };
-    });
-  },
+    this.recommend.snack = {
+      name: recommend.snack.name,
+      image: this.getImageUrl(recommend.snack),
+    };
+  });
+},
 
   methods: {
+     getImageUrl(menu) {
+    const cloud = process.env.VUE_APP_CLOUDINARY_CLOUD_NAME;
+
+    const safeName = (menu.name || "")
+      .trim()
+      .replace(/\s+/g, "_");
+
+    return safeName
+      ? `https://res.cloudinary.com/${cloud}/image/upload/${safeName}`
+      : "";
+  },
     clickPopular() {
       this.activeTab = "popular";
 

@@ -14,7 +14,7 @@ router.get("/menus", async (req, res) => {
 });
 
 /**
- * 출력메뉴 저장
+ * 대상메뉴 저장
  */
 router.post("/menus/save", async (req, res) => {
   const { menus } = req.body;
@@ -189,6 +189,35 @@ router.post("/menus/delete", async (req, res) => {
     res.status(500).json({ success: false });
   } finally {
     conn.release();
+  }
+});
+
+/* 만족도 조사 별점 결과 조회 */
+router.get("/statistics/star", async (req, res) => {
+  try {
+    const [counts] = await pool.query(`
+      SELECT star, COUNT(*) AS count
+      FROM statistics_star
+      GROUP BY star
+      ORDER BY star
+    `);
+
+    const [summary] = await pool.query(`
+      SELECT COUNT(*) AS total, AVG(star) AS average
+      FROM statistics_star
+    `);
+
+    res.json({
+      success: true,
+      data: {
+        counts,
+        total: summary[0].total,
+        average: summary[0].average
+      }
+    });
+
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
