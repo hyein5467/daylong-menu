@@ -5,10 +5,14 @@ export const useMenuStore = defineStore("menu", {
     loading: false,
     drink: null,
     snack: null,
-    reason: ""
+    reason: "",
+     selectedKeywords: []
   }),
 
   actions: {
+    setSelectedKeywords(keywords) {
+      this.selectedKeywords = keywords;
+    },
     startLoading() {
       this.loading = true;
     },
@@ -25,6 +29,7 @@ export const useMenuStore = defineStore("menu", {
       this.drink = null;
       this.snack = null;
       this.reason = "";
+      this.selectedKeywords = [];
     }
   }
 });

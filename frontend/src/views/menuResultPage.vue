@@ -152,8 +152,14 @@ export default {
       }
 
       try {
-        await axios.post("/api/star", { star });
-        alert("의견이 반영되었습니다! 감사합니다 ☺️");
+        await axios.post("/api/star", {
+          star,
+          selected_keywords: this.store.selectedKeywords || [],
+          drink_name: this.drinkName,
+          snack_name: this.snackName,
+          reason: this.reason || ""
+        });
+      alert("의견이 반영되었습니다! 감사합니다 ☺️");
       } catch (e) {
         console.error("별점 저장 오류:", e);
         alert("별점 저장 중 문제가 발생했습니다.");

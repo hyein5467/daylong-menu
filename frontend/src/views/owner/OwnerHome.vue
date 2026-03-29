@@ -41,37 +41,67 @@
 
     <!-- ================= 만족도 결과 ================= -->
     <div v-if="activeTab === 'statistics'" class="statistics-panel">
-      <div class="stats-top">
-        <div class="average">
-          평균 평점 <span class="star">⭐</span> {{ average.toFixed(1) }}
-        </div>
-        <div class="total">
-          총 참여 수: {{ total }}명
-        </div>
-      </div>
-
-      <div class="bar-list">
-        <div
-          v-for="star in 6"
-          :key="star"
-          class="bar-row"
-        >
-          <span class="label">{{ 6 - star }}점</span>
-
-          <div class="bar-container">
-            <div
-              class="bar-fill"
-              :style="{ width: getPercent(6 - star) + '%' }"
-            ></div>
-          </div>
-
-          <span class="count">
-            {{ getCount(6 - star) }}명
-            <span class="percent">({{ getPercent(6 - star).toFixed(0) }}%)</span>
-          </span>
-        </div>
-      </div>
+  <div class="stats-top">
+    <div class="average">
+      평균 평점 <span class="star">⭐</span> {{ average.toFixed(1) }}
     </div>
+    <div class="total">
+      총 참여 수: {{ total }}명
+    </div>
+  </div>
+
+  <div class="bar-list">
+    <div
+      v-for="star in 6"
+      :key="star"
+      class="bar-row"
+    >
+      <span class="label">{{ 6 - star }}점</span>
+
+      <div class="bar-container">
+        <div
+          class="bar-fill"
+          :style="{ width: getPercent(6 - star) + '%' }"
+        ></div>
+      </div>
+
+      <span class="count">
+        {{ getCount(6 - star) }}명
+        <span class="percent">({{ getPercent(6 - star).toFixed(0) }}%)</span>
+      </span>
+    </div>
+  </div>
+
+  <!-- 추가 -->
+  <div class="rating-table-wrap" v-if="ratingRows.length">
+    <table class="rating-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>별점</th>
+          <th>선택 키워드</th>
+          <th>음료</th>
+          <th>디저트</th>
+          <th>등록일</th>
+        </tr>
+      </thead>
+     <tbody>
+      <tr v-for="row in ratingRows" :key="row.id">
+        <td>{{ row.id }}</td>
+        <td>{{ row.star }}</td>
+        <td>{{ formatKeywords(row.selected_keywords) }}</td>
+        <td>{{ row.drink_name || '-' }}</td>
+        <td>{{ row.snack_name || '-' }}</td>
+        <td>{{ row.created_at || '-' }}</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div v-else class="empty-text">
+    저장된 만족도 데이터가 없습니다.
+  </div>
+</div>
 
     <!-- ================= 출력 / 삭제 ================= -->
     <div
@@ -246,9 +276,9 @@ export default {
       tabs: [
         { key: "enabled", label: "대상메뉴" },
         { key: "delete", label: "메뉴삭제" },
-        { key: "popular", label: "인기메뉴" },
-        { key: "recommend", label: "추천메뉴" },
-        { key: "statistics", label: "만족도" } // ✅ 추가
+        { key: "popular", label: "추천메뉴" },
+        //{ key: "recommend", label: "추천메뉴" },
+        { key: "statistics", label: "만족도" } 
       ],
 
       menus: [],
@@ -266,7 +296,9 @@ export default {
       // ✅ 만족도 통계
       starCounts: [], // [{star:0..5, count:n}]
       starTotal: 0,
-      starAverage: 0
+      starAverage: 0,
+
+        ratingRows: [] 
     };
   },
 
@@ -366,23 +398,27 @@ export default {
     },
 
     // ✅ 만족도 조회
-    async fetchStatistics () {
-      try {
-        const res = await api.get("/api/owner/statistics/star");
-        const d = res.data.data || {};
+   async fetchStatistics () {
+    try {
+      const res = await api.get("/api/owner/statistics/star");
+      console.log("statistics response:", res.data);
 
-        // 기대 형태:
-        // { counts: [{star:0..5, count:n}], total: n, average: x }
-        this.starCounts = d.counts || [];
-        this.starTotal = d.total || 0;
-        this.starAverage = Number(d.average || 0);
-      } catch (e) {
-        // 실패해도 페이지는 뜨게
-        this.starCounts = [];
-        this.starTotal = 0;
-        this.starAverage = 0;
-      }
-    },
+      const d = res.data.data || {};
+
+      this.starCounts = d.counts || [];
+      this.starTotal = d.total || 0;
+      this.starAverage = Number(d.average || 0);
+      this.ratingRows = d.rows || [];
+
+      console.log("ratingRows:", this.ratingRows);
+    } catch (e) {
+      console.error(e);
+      this.starCounts = [];
+      this.starTotal = 0;
+      this.starAverage = 0;
+      this.ratingRows = [];
+    }
+  },
 
     // ✅ 별점별 count
     getCount (star) {
@@ -561,7 +597,29 @@ export default {
       this.newMenu = { name: "", type: 1 };
       this.imageFile = null;
       this.previewUrl = null;
-    }
+    },
+    formatKeywords (value) {
+      if (!value) return "-";
+
+      if (Array.isArray(value)) {
+        return value.join(", ");
+      }
+
+      if (typeof value === "string") {
+        try {
+          const parsed = JSON.parse(value);
+          if (Array.isArray(parsed)) {
+            return parsed.join(", ");
+          }
+        } catch (e) {
+          console.error(e);
+        }
+
+        return value;
+      }
+
+      return String(value);
+    },
   }
 };
 </script>
@@ -829,5 +887,35 @@ export default {
   color: #777;
   font-weight: 700;
   margin-left: 6px;
+}
+
+.rating-table-wrap {
+  margin-top: 20px;
+  overflow-x: auto;
+}
+
+.rating-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.rating-table th,
+.rating-table td {
+  border: 1px solid #eee;
+  padding: 10px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.rating-table th {
+  background: #faf3cf;
+  font-weight: 800;
+}
+
+.empty-text {
+  margin-top: 18px;
+  color: #888;
+  font-size: 13px;
 }
 </style>

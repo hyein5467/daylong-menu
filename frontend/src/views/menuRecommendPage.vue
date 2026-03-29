@@ -8,16 +8,16 @@
         :class="{ active: activeTab === 'popular' }"
         @click="clickPopular"
       >
-        요즘 가장 인기있는 메뉴
+      AI가 추천하는 이달의 메뉴!
       </div>
 
-      <div
+      <!--div
         class="tab"
         :class="{ active: activeTab === 'owner' }"
         @click="clickRecommend"
       >
         사장님 추천 메뉴
-      </div>
+      </div-->
     </div>
 
     <!-- 메뉴 영역 -->
@@ -47,7 +47,7 @@
       </template>
 
       <!-- 사장님 추천 -->
-      <template v-else>
+      <!--template v-else>
         <div class="menu-item">
           <div class="image-box">
             <img :src="recommend.drink.image" class="menu-image" />
@@ -67,7 +67,7 @@
             v-html="formatMenuName(recommend.snack.name)"
           ></div>
         </div>
-      </template>
+      </template-->
 
     </div>
   </div>

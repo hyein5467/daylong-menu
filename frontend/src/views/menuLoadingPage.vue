@@ -25,10 +25,7 @@
 
     <!-- FOOTER -->
     <footer class="footer-section">
-     <MenuRecommendPage
-        :drink="drink"
-        :snack="snack"
-      />
+     <MenuRecommendPage/>
     </footer>
 
   </div>

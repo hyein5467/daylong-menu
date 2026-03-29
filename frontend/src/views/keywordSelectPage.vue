@@ -107,6 +107,11 @@ export default {
   }
 
   const menuStore = useMenuStore(this.$pinia);
+  menuStore.setSelectedKeywords([...this.selectedKeywords]);
+  
+  //console.log("선택한 키워드:", this.selectedKeywords);
+  //console.log("store에 저장된 키워드:", menuStore.selectedKeywords);
+
   menuStore.startLoading();
   this.$router.push("/menu-loading");
 
