@@ -207,16 +207,30 @@ router.get("/statistics/star", async (req, res) => {
       FROM statistics_star
     `);
 
+    const [rows] = await pool.query(`
+      SELECT
+        id,
+        star,
+        drink_name,
+        snack_name,
+        selected_keywords,
+        created_at
+      FROM statistics_star
+      ORDER BY id DESC
+    `);
+
     res.json({
       success: true,
       data: {
         counts,
-        total: summary[0].total,
-        average: summary[0].average
+        total: Number(summary[0].total || 0),
+        average: Number(summary[0].average || 0),
+        rows
       }
     });
 
   } catch (err) {
+    console.error("GET /statistics/star error", err);
     res.status(500).json({ success: false, message: err.message });
   }
 });

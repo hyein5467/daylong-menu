@@ -114,7 +114,7 @@ app.get("/api/popular", async (req, res) => {
  * 별점 저장
  */
 app.post("/api/star", async (req, res) => {
-  const { star } = req.body;
+  const { star, selected_keywords, drink_name, snack_name, reason } = req.body;
 
   try {
     if (typeof star !== "number" || star < 0 || star > 5) {
@@ -123,9 +123,19 @@ app.post("/api/star", async (req, res) => {
       });
     }
 
-    await pool.query(
-      "INSERT INTO statistics_star (star) VALUES (?)",
-      [star]
+     await pool.query(
+      `
+      INSERT INTO statistics_star
+      (star, selected_keywords, drink_name, snack_name, reason)
+      VALUES (?, ?, ?, ?, ?)
+      `,
+      [
+        star,
+        JSON.stringify(selected_keywords || []),
+        drink_name || null,
+        snack_name || null,
+        reason || null
+      ]
     );
 
     res.json({ message: "Star saved successfully" });
